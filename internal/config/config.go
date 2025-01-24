@@ -2,9 +2,8 @@ package config
 
 import (
 	"encoding/json"
-	"fmt"
-	"log"
 	"os"
+	"path/filepath"
 )
 
 const configFileName = ".gatorconfig.json"
@@ -14,46 +13,59 @@ type Config struct {
 	CurrentUserName string `json:"current_user_name"`
 }
 
-func Read() Config {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return Config{}
-	}
-
-	b, err := os.ReadFile(home + "/" + configFileName)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// `b` contains everything your file has.
-	// This writes it to the Standard Out.
-	// os.Stdout.Write(b)
-	var config Config
-	err = json.Unmarshal(b, &config)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return config
-	// You can also write it to a file as a whole.
-
+func (cfg *Config) SetUser(userName string) error {
+	cfg.CurrentUserName = userName
+	return write(*cfg)
 }
 
-func (config Config) SetUser(current_user_name string) {
+func Read() (Config, error) {
+	fullPath, err := getConfigFilePath()
+	if err != nil {
+		return Config{}, err
+	}
+
+	file, err := os.Open(fullPath)
+	if err != nil {
+		return Config{}, err
+	}
+	defer file.Close()
+
+	decoder := json.NewDecoder(file)
+	cfg := Config{}
+	err = decoder.Decode(&cfg)
+	if err != nil {
+		return Config{}, err
+	}
+
+	return cfg, nil
+}
+
+func getConfigFilePath() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
-	configInstance := &Config{DbURL: "postgres://example", CurrentUserName: current_user_name}
-	b, err := json.Marshal(configInstance)
+	fullPath := filepath.Join(home, configFileName)
+	return fullPath, nil
+}
+
+func write(cfg Config) error {
+	fullPath, err := getConfigFilePath()
 	if err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
 
-	err = os.WriteFile(home+"/"+configFileName, b, 0644)
+	file, err := os.Create(fullPath)
 	if err != nil {
-		fmt.Println("Error writing JSON to file:", err)
-		return
+		return err
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	err = encoder.Encode(cfg)
+	if err != nil {
+		return err
 	}
 
+	return nil
 }
