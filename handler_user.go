@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
-	"os"
 	"time"
 
 	"github.com/StanimalTheMan/gator/internal/database"
@@ -16,16 +14,10 @@ func handlerLogin(s *state, cmd command) error {
 		return fmt.Errorf("usage: %s <name>", cmd.Name)
 	}
 	name := cmd.Args[0]
-	Context := context.Background()
 
-	// check if user exists before logging in
-	user, err := s.db.GetUser(Context, name)
+	_, err := s.db.GetUser(context.Background(), name)
 	if err != nil {
-		return fmt.Errorf("error occurred while fetching user")
-	}
-	if user.ID == uuid.Nil {
-		log.Fatalf("user not found")
-		os.Exit(1)
+		return fmt.Errorf("couldn't find user: %w", err)
 	}
 
 	err = s.cfg.SetUser(name)
@@ -39,35 +31,33 @@ func handlerLogin(s *state, cmd command) error {
 
 func handlerRegister(s *state, cmd command) error {
 	if len(cmd.Args) != 1 {
-		return fmt.Errorf("usage: %s <name>", cmd.Name)
+		return fmt.Errorf("usage: %v <name>", cmd.Name)
 	}
-
-	Context := context.Background()
-	newUserID := uuid.New()
 	name := cmd.Args[0]
 
 	// create user
-	user, err := s.db.CreateUser(Context, database.CreateUserParams{
-		ID:        newUserID,
+	user, err := s.db.CreateUser(context.Background(), database.CreateUserParams{
+		ID:        uuid.New(),
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 		Name:      name,
 	})
 
 	if err != nil {
-		log.Fatalf("failed to get user")
-		return err
-	}
-	if user.ID == uuid.Nil {
-		log.Fatalf("Name already exists")
-		os.Exit(1)
+		return fmt.Errorf("couldn't create user: %w", err)
 	}
 
-	err = s.cfg.SetUser(name)
+	err = s.cfg.SetUser(user.Name)
 	if err != nil {
-		log.Fatalf("couldn't set current user: %v", err)
-		return err
+		return fmt.Errorf("couldn't set current user: %w", err)
 	}
-	fmt.Printf("user created %v", user)
+
+	fmt.Println("User created successfully:")
+	printUser(user)
 	return nil
+}
+
+func printUser(user database.User) {
+	fmt.Printf(" * ID:		%v\n", user.ID)
+	fmt.Printf(" * Name:    %v\n", user.Name)
 }

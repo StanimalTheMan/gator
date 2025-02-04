@@ -23,8 +23,9 @@ func main() {
 
 	db, err := sql.Open("postgres", cfg.DbURL)
 	if err != nil {
-		log.Fatalf("error opening postgres connection")
+		log.Fatalf("error connecting to db: %v", err)
 	}
+	defer db.Close()
 	dbQueries := database.New(db)
 
 	programState := &state{
