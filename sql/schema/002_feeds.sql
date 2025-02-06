@@ -4,7 +4,7 @@ CREATE TABLE feeds (
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL,
     name TEXT NOT NULL,
-    url TEXT UNIQUE NOT NULL,
+    url TEXT NOT NULL UNIQUE,
     user_id UUID NOT NULL,
     CONSTRAINT fk_feed_user_id
         FOREIGN KEY (user_id)

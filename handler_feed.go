@@ -2,43 +2,51 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/StanimalTheMan/gator/internal/database"
+	"github.com/google/uuid"
 )
 
 func addFeed(s *state, cmd command) error {
-	userName := s.cfg.CurrentUserName
-	userInputs := os.Args
-	fmt.Println(len(userInputs))
-	if len(userInputs) < 4 {
-		return errors.New("not enough arguments provided")
-	}
-	// if len(userInputs) != 2 {
-	// 	return errors.New("only provide error")
-	// }
-	feedName := userInputs[2]
-	feedUrl := userInputs[3]
-	fmt.Println("feedName", feedName)
-	fmt.Println("feedUrl", feedUrl)
-	user, err := s.db.GetUser(context.Background(), userName)
+	user, err := s.db.GetUser(context.Background(), s.cfg.CurrentUserName)
 	if err != nil {
-		return errors.New("user not found")
+		return err
 	}
 
+	if len(cmd.Args) != 2 {
+		return fmt.Errorf("usage: %s <name> <url>", cmd.Name)
+	}
+
+	name := cmd.Args[0]
+	url := cmd.Args[1]
+
 	feed, err := s.db.CreateFeed(context.Background(), database.CreateFeedParams{
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		Name:      feedName,
-		Url:       feedUrl,
+		ID:        uuid.New(),
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
 		UserID:    user.ID,
+		Name:      name,
+		Url:       url,
 	})
 	if err != nil {
-		return fmt.Errorf("error creating feed%w", err)
+		return fmt.Errorf("couldn't create feed: %w", err)
 	}
-	fmt.Printf("%+v", feed)
+
+	fmt.Println("Feed created successfully:")
+	printFeed(feed)
+	fmt.Println()
+	fmt.Println("=====================================")
+
 	return nil
+}
+
+func printFeed(feed database.Feed) {
+	fmt.Printf("* ID:            %s\n", feed.ID)
+	fmt.Printf("* Created:       %v\n", feed.CreatedAt)
+	fmt.Printf("* Updated:       %v\n", feed.UpdatedAt)
+	fmt.Printf("* Name:          %s\n", feed.Name)
+	fmt.Printf("* URL:           %s\n", feed.Url)
+	fmt.Printf("* UserID:        %s\n", feed.UserID)
 }
