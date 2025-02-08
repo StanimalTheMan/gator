@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	"os"
 
@@ -41,7 +43,7 @@ func main() {
 	cmds.register("reset", handleReset)
 	cmds.register("users", handlerListUsers)
 	cmds.register("agg", handlerAgg)
-	cmds.register("addfeed", addFeed)
+	cmds.register("addfeed", middlewareLoggedIn(addFeed))
 	cmds.register("feeds", handlerListFeeds)
 	cmds.register("follow", handlerFollow)
 	cmds.register("following", handlerFollowing)
@@ -57,5 +59,16 @@ func main() {
 	err = cmds.run(programState, command{Name: cmdName, Args: cmdArgs})
 	if err != nil {
 		log.Fatal(err)
+	}
+}
+
+// middleware
+func middlewareLoggedIn(handler func(s *state, cmd command, user database.User) error) func(*state, command) error {
+	return func(s *state, cmd command) error {
+		user, err := s.db.GetUser(context.Background(), s.cfg.CurrentUserName)
+		if err != nil {
+			return fmt.Errorf("error retrieving user: %w", err)
+		}
+		return handler(s, cmd, user)
 	}
 }
